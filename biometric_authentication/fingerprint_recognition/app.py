@@ -2,10 +2,11 @@ import cv2
 import os
 import sys
 import numpy
-import matplotlib.pyplot as plt
 from enhance import image_enhance
 from skimage.morphology import skeletonize, thin
 
+
+os.chdir(Project_location)
 
 def removedot(invertThin):
     temp0 = numpy.array(invertThin[:])
@@ -37,6 +38,11 @@ def removedot(invertThin):
 
     return temp2
 
+def show_picture(name_of_window, image):
+	cv2.namedWindow(name_of_window, cv2.WINDOW_AUTOSIZE)
+	cv2.imshow(name_of_window, image)
+	cv2.waitKey(0)
+	cv2.destroyAllWindows()
 
 def get_descriptors(img):
 	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -81,17 +87,6 @@ def main():
 	# Matching between descriptors
 	bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 	matches = sorted(bf.match(des1, des2), key= lambda match:match.distance)
-	# Plot keypoints
-	img4 = cv2.drawKeypoints(img1, kp1, outImage=None)
-	img5 = cv2.drawKeypoints(img2, kp2, outImage=None)
-	f, axarr = plt.subplots(1,2)
-	axarr[0].imshow(img4)
-	axarr[1].imshow(img5)
-	plt.show()
-	# Plot matches
-	img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches, flags=2, outImg=None)
-	plt.imshow(img3)
-	plt.show()
 
 	# Calculate score
 	score = 0

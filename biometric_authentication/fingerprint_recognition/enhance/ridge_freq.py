@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+# """
+# Created on Fri Apr 22 02:51:53 2016
+# @author: utkarsh
+# """
+
 # RIDGEFREQ - Calculates a ridge frequency image
 #
 # Function to estimate the fingerprint ridge frequency across a
