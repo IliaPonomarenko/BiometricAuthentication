@@ -39,45 +39,10 @@ def getIris(frame):
         cv.bitwise_not(mask,mask)
         cv.subtract(frame,copyImg,resImg,mask)
         cropImg = resImg[y:y+h, x:x+w]
-        buffer = getQuaterOfIris(cropImg).copy()
-        del cropImg
-        cropImg = buffer.copy()
-        cv.imshow("res",cropImg)
         return(cropImg)
     return (resImg)
 
-def getQuaterOfIris(image):
-    h,w,_ = image.shape
-    center = (h/2,w/2)
-    y = int(center[0])
-    x = int(center[1])
-    y1 = int(y - y/2)
-    y2 = int(y + y/2)
-    quater = image[y1:y2, x:x*2 -1]
-    quater = cv.GaussianBlur(quater,(5,5),0)
-    lookUpTable = np.empty((1,256), np.uint8)
-    for i in range(256):
-        lookUpTable[0,i] = np.clip(pow(i / 255.0, 1.5) * 255.0, 0, 255)
-    res = cv.LUT(quater, lookUpTable)
-    quater = res.copy()
-    quater = cv.inRange(quater,(100,100,100),(190,190,190))
-    contours,hierarchy = cv.findContours(quater,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE)
-    contours = sorted(contours, key=cv.contourArea)
-    del quater
-    quater = image[y1:y2, x:x*2-1].copy() 
-    for contour in contours:
-        moments = cv.moments(contour)
-        area = moments['m00']
-        if(area>50):
-            iris = contour
-            mask = np.zeros((quater.shape[:2]),np.uint8)
-            mask = cv.drawContours(mask,iris,-1,(255,255,255),-1,cv.LINE_AA)
-            mask = cv.fillConvexPoly(mask,iris,(255,255,255))
-            buffer = np.zeros((quater.shape[:2]),np.uint8)
-            buffer = cv.bitwise_and(quater,quater,mask=mask)
-            quater = buffer.copy()
-            break
-    return (quater)
+
 
 def getCircles(image):
     i = 80
@@ -112,35 +77,159 @@ def getPupil(frame):
             centroid = (int(x),int(y))
             mask = np.zeros((pupilImg.shape[0],pupilImg.shape[1],pupilImg.shape[2]),np.uint8)
             pupilImg = cv.fillConvexPoly(pupilImg,pupil,(0,0,0))
-            cv.imshow("output",pupilImg)
             break
     return(pupilImg)
 
 def getPolar2CartImg(image, rad):
     height,width,channels = image.shape
-    value = np.sqrt(((image.shape[0]/2)**2.0)+((image.shape[1]/2)**2.0))
-    imgRes = cv.linearPolar(image,(height/2,width/2),value,cv.WARP_POLAR_LINEAR + cv.WARP_POLAR_LOG)
-    imgRes = imgRes.astype(np.uint8)
-    return(imgRes)
+    c = (float(height/2.0), float(width/2.0))
+    res = cv.logPolar(image,c,50,cv.INTER_LINEAR+cv.WARP_FILL_OUTLIERS)
+    res = res[int(res.shape[0]/2-(res.shape[0]/4)):int(res.shape[0]/2+(res.shape[0]/4)),int(res.shape[1]/2 + res.shape[1]/3.5):int(res.shape[1] - res.shape[1]/32)]
+    lookUpTable = np.empty((1,256), np.uint8)
+    for y in range(res.shape[0]):
+        for x in range(res.shape[1]):
+           for c in range(res.shape[2]):
+               res[y,x,c] = np.clip(1.1*res[y,x,c] + 30, 0, 255)
 
-cv.namedWindow("input")
-cv.namedWindow("output")
-cv.namedWindow("normalized")
 
-eyesList = os.listdir('images/eyes')
-key = 0
-while True:
-    eye = getNewEye(eyesList)
-    frame = cv.imread("images/eyes/" + eye)
-    iris = frame.copy()
-    output = getPupil(frame)
+    for i in range(256):
+        lookUpTable[0,i] = np.clip(pow(i / 255.0, 4) * 255.0, 0, 255)
+    res = cv.LUT(res, lookUpTable)
+    _,binaryImg = cv.threshold(res,70,255,cv.THRESH_BINARY)
+    return (binaryImg)
+
+def getIrisCode(binImg):
+    height =int(binImg.shape[0])
+    width = int(binImg.shape[1])
+    resultat = np.empty((height,width), dtype= int)
+    height = 0
+    for y in binImg:
+        width = 0
+        buffer = 0
+        for x in y:
+            for z in x:
+                if(z == 0):
+                    buffer+=1
+            if(buffer == 3):
+                resultat[height,width] = 0.0
+                buffer = 0
+            else:
+                resultat[height,width] = 1.0
+                buffer = 0
+            width+=1
+        height+=1
+    return(resultat)
+
+def toFile(res,eye):
+    name = eye.replace('.jpg','.txt')
+    name = "images/results/" + name
+    np.savetxt(name,res, delimiter = ',')
+    
+
+def toFileInputImg(res,name):
+    name = name + ".txt"
+    name = "images/results/" + name
+    np.savetxt(name,res, delimiter = ',')
+
+
+def makeBD(image,eye):
+    output = getPupil(image)
     iris = getIris(output)
-    cv.imshow("input",frame)
-    cv.imshow("output",iris)
-    normImg = iris.copy()
-    normImg = getPolar2CartImg(iris,radius)
-    cv.imshow("normalized",normImg)
-    key = cv.waitKey(3000)
-    if(key == 27 or key == 1048603):
-        break
-cv.destroyAllWindows()
+    try:
+       normImg = getPolar2CartImg(iris,radius)
+    except Exception:
+        print("Something going wrong because of preatretment image processing or scale")
+        start()
+    irisCode = getIrisCode(normImg)
+    toFile(irisCode,eye)
+
+def hemmingDif(str1,str2):
+    difs = 0
+    if(len(str1) != len(str2)):
+        for ch1,ch2 in zip(str1,str2):
+            if(ch1 != ch2):
+                difs += 1
+    return(difs)
+
+def inputImage(image):
+    output = getPupil(image)
+    iris = getIris(output)
+    try:
+       normimg = getPolar2CartImg(iris,radius)
+    except Exception:
+        print("Something going wrong because of preatretment image processing or scale")
+        start()
+
+    irisCode = getIrisCode(normimg)
+
+    path = "images/results/"
+    i = 0
+    difference = 0
+    while(i<len(os.listdir(path))):
+        currentPathToCode = os.listdir(path)[i]
+        currentPathToCode = path + currentPathToCode
+        currentCode = np.loadtxt(currentPathToCode,dtype= np.int, delimiter= ',')
+        difference = diff(irisCode,currentCode)
+        nameOfOwner = ""
+        owner = ""       
+
+        if(difference > 95):
+            bufferForOwner = os.listdir(path)[i].replace('.txt', '')
+            nameOfOwner = str(bufferForOwner)
+            owner = nameOfOwner
+        else:
+            print("Nope" + " " + str(difference) + "%" + " "+ str(os.listdir(path)[i].replace(".txt", "")))
+        i+=1
+    if(owner != ""):
+        print("Owner of eye is:" + owner)
+        return(owner)
+    else:
+        print(" !!!!____Registry User___!!!!")
+        owner = str(input("Name: "))
+        toFileInputImg(irisCode,owner)
+
+        
+
+
+def diff(irisInput,irisDB):
+    difs = 0
+    elementsOfImage = 0
+    for xI,xDB in zip(irisInput,irisDB):
+        for chI,chDB in zip(xI,xDB):
+            if(chI != chDB):
+                difs +=1
+            elementsOfImage +=1
+    difs = 100 - (100*difs/elementsOfImage)
+    difs = int(difs)
+    return(difs)
+    
+           
+
+
+def start():
+    global numbersOfStarts
+    numbersOfStarts +=1
+    eyesList = os.listdir('images/eyes')
+    key = 0
+    exitString = "exit"
+    numberOfFiles = 0
+    while True:
+        if(numbersOfStarts <= 1):
+          for i in os.listdir('images/eyes'):
+              eye = getNewEye(eyesList)
+              frame = cv.imread("images/eyes/" + eye)
+              makeBD(frame,eye)
+        path = (str(input("Name of image (in format: eye): ")))
+        if(path.lower() == exitString.lower()):
+            break
+        image = cv.imread("imagesThatCanBeUsed/" + path + ".jpg")
+        owner = inputImage(image)
+        key = cv.waitKey(1000)
+        if(key == 27 or key == 1048603):
+            break
+        if(owner != ""):
+            break
+    cv.destroyAllWindows()
+
+numbersOfStarts = 0
+start()
