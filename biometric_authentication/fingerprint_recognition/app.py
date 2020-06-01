@@ -54,7 +54,7 @@ def get_descriptors(img):
 	# Normalize to 0 and 1 range
 	img[img == 255] = 1
 
-	#Thinning
+	# Thinning
 	skeleton = skeletonize(img)
 	skeleton = numpy.array(skeleton, dtype=numpy.uint8)
 	skeleton = removedot(skeleton)
@@ -72,31 +72,59 @@ def get_descriptors(img):
 	orb = cv2.ORB_create()
 	# Compute descriptors
 	_, des = orb.compute(img, keypoints)
-	return (keypoints, des)
+	#return (keypoints, des)
+	return (des)
 
+def parse_imgDB_to_csvDB():
+	for i in range(1, 2):
+		for j in range(1, 9):
+			image_name = ("%s_%s" % (i, j))
+			img = cv2.imread("PNG_database/" + image_name + ".png", cv2.IMREAD_GRAYSCALE)
+			des = get_descriptors(img)
+			numpy.savetxt("CSV_database/" + image_name + ".csv", des, delimiter=',')
 
 def main():
 	image_name = sys.argv[1]
-	img1 = cv2.imread("database/" + image_name, cv2.IMREAD_GRAYSCALE)
-	kp1, des1 = get_descriptors(img1)
+	img = cv2.imread("PNG_database/" + image_name, cv2.IMREAD_GRAYSCALE)
+	des1 = get_descriptors(img)
 
-	image_name = sys.argv[2]
-	img2 = cv2.imread("database/" + image_name, cv2.IMREAD_GRAYSCALE)
-	kp2, des2 = get_descriptors(img2)
+	permission = "denied" 
 
-	# Matching between descriptors
 	bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-	matches = sorted(bf.match(des1, des2), key= lambda match:match.distance)
+	for i in range(1, 17):
+		for j in range(1, 9):
+			image_name = ("%s_%s" % (i, j))
+			des2 = numpy.loadtxt("CSV_database/%s.csv" % image_name, dtype=numpy.uint8, delimiter=',')
 
-	# Calculate score
-	score = 0
-	for match in matches:
-		score += match.distance
-	score_threshold = 33
-	if score/len(matches) < score_threshold:
-		print("Fingerprint matches.")
-	else:
-		print("Fingerprint does not match.")
+			matches = sorted(bf.match(des1, des2), key= lambda match:match.distance)
+
+			score = 0
+			for match in matches:
+				score += match.distance
+
+			print(image_name + " " + str(100 - score/len(matches)))
+
+			score_threshold = 20
+			if score/len(matches) < score_threshold:
+				permission = "allow"
+
+	print(permission)
+				
+
+
+	# # Matching between descriptors
+	# bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+	# matches = sorted(bf.match(des1, des2), key= lambda match:match.distance)
+			
+	# # Calculate score
+	# score = 0
+	# for match in matches:
+	# 	score += match.distance
+	# score_threshold = 33
+	# if score/len(matches) < score_threshold:
+	# 	print("Fingerprint matches.")
+	# else:
+	# 	print("Fingerprint does not match.")
 
 
 
