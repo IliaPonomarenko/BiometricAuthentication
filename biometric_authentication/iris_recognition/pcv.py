@@ -1,7 +1,5 @@
 import cv2 as cv
 import numpy as np
-from matplotlib import pyplot as plt
-import math 
 import os
 
 centroid = (0,0)
@@ -165,13 +163,13 @@ def inputImage(image):
     path = "images/results/"
     i = 0
     difference = 0
+    owner = ""
     while(i<len(os.listdir(path))):
         currentPathToCode = os.listdir(path)[i]
         currentPathToCode = path + currentPathToCode
         currentCode = np.loadtxt(currentPathToCode,dtype= np.int, delimiter= ',')
         difference = diff(irisCode,currentCode)
         nameOfOwner = ""
-        owner = ""       
 
         if(difference > 95):
             bufferForOwner = os.listdir(path)[i].replace('.txt', '')
