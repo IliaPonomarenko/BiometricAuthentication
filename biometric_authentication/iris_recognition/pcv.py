@@ -1,11 +1,23 @@
 import cv2 as cv
 import numpy as np
 import os
+import PySimpleGUI as sg
 
+sg.theme('DarkAmber')
 centroid = (0,0)
 radius = 0
 currentEye = 0
 eyesList = []
+numbersOfStarts = 0
+
+layout = [[sg.Text('Browse to a file')],
+          [sg.Input(key='-FILE-', visible=False, enable_events=True), sg.FileBrowse()],
+          [sg.Text('For registry user')],
+          [sg.Button('Registry',key = 'registry')],
+          [sg.MLine(size=(50,20),key = '-Output-')],
+          [sg.Button('Recognition',key='recognition'), sg.Button('Exit',key = 'Exit')]]
+
+window = sg.Window('Window Title',layout)
 
 def getNewEye(list):
     global currentEye
@@ -122,7 +134,10 @@ def toFile(res,eye):
     name = eye.replace('.jpg','.txt')
     name = "images/results/" + name
     np.savetxt(name,res, delimiter = ',')
-    
+
+def toFileRegistry(res,name):
+    name = "images/results/" + name + '.txt'
+    np.savetxt(name,res, delimiter = ',')     
 
 def toFileInputImg(res,name):
     name = name + ".txt"
@@ -136,7 +151,7 @@ def makeBD(image,eye):
     try:
        normImg = getPolar2CartImg(iris,radius)
     except Exception:
-        print("Something going wrong because of preatretment image processing or scale")
+        window['-Output-'].print("Something going wrong because of preatretment image processing or scale")
         start()
     irisCode = getIrisCode(normImg)
     toFile(irisCode,eye)
@@ -155,7 +170,7 @@ def inputImage(image):
     try:
        normimg = getPolar2CartImg(iris,radius)
     except Exception:
-        print("Something going wrong because of preatretment image processing or scale")
+        window['-Output-'].print("Something going wrong because of preatretment image processing or scale")
         start()
 
     irisCode = getIrisCode(normimg)
@@ -176,14 +191,14 @@ def inputImage(image):
             nameOfOwner = str(bufferForOwner)
             owner = nameOfOwner
         else:
-            print("Nope" + " " + str(difference) + "%" + " "+ str(os.listdir(path)[i].replace(".txt", "")))
+            window['-Output-'].print("Nope" + " " + str(difference) + "%" + " "+ str(os.listdir(path)[i].replace(".txt", "")))
         i+=1
     if(owner != ""):
-        print("Owner of eye is:" + owner)
+        window['-Output-'].print("Owner of eye is:" + owner)
         return(owner)
     else:
-        print(" !!!!____Registry User___!!!!")
-        owner = str(input("Name: "))
+        window['-Output-'].print(" !!!!____Registry User___!!!!")
+        owner = sg.popup_get_text('Registry','Input')
         toFileInputImg(irisCode,owner)
 
         
@@ -203,7 +218,6 @@ def diff(irisInput,irisDB):
     
            
 
-
 def start():
     global numbersOfStarts
     numbersOfStarts +=1
@@ -217,17 +231,31 @@ def start():
               eye = getNewEye(eyesList)
               frame = cv.imread("images/eyes/" + eye)
               makeBD(frame,eye)
-        path = (str(input("Name of image (in format: eye): ")))
-        if(path.lower() == exitString.lower()):
-            break
-        image = cv.imread("imagesThatCanBeUsed/" + path + ".jpg")
+        path = values['Browse']
+        image = cv.imread(path)
         owner = inputImage(image)
-        key = cv.waitKey(1000)
-        if(key == 27 or key == 1048603):
-            break
         if(owner != ""):
             break
-    cv.destroyAllWindows()
+def registryUser():
+    path = sg.popup_get_file('Choose an image')
+    name = sg.popup_get_text('Input Name')
+    image = cv.imread(path)
+    output = getPupil(image)
+    iris = getIris(output)
+    try:
+       normImg = getPolar2CartImg(iris,radius)
+    except Exception:
+        window['-Output-'].print("Something going wrong because of preatretment image processing or scale")
+        start()
+    irisCode = getIrisCode(normImg)
+    toFileInputImg(irisCode,name)
 
-numbersOfStarts = 0
-start()
+while True:
+   event,values = window.read()
+   if(event == 'registry'):
+       registryUser()
+   if(event == 'recognition'):
+       start()
+   if(event == 'Exit'):
+       break
+   window['-Output-'].update()
