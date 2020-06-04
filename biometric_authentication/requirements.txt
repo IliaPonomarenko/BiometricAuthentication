@@ -8,3 +8,4 @@ matplotlib
 pypiwin32
 numpy
 scikit-image
+pysimplegui

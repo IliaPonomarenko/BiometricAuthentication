@@ -132,16 +132,16 @@ def getIrisCode(binImg):
 
 def toFile(res,eye):
     name = eye.replace('.jpg','.txt')
-    name = "images/results/" + name
+    name = "iris_recognition/images/results/" + name
     np.savetxt(name,res, delimiter = ',')
 
 def toFileRegistry(res,name):
-    name = "images/results/" + name + '.txt'
+    name = "iris_recognition/images/results/" + name + '.txt'
     np.savetxt(name,res, delimiter = ',')     
 
 def toFileInputImg(res,name):
     name = name + ".txt"
-    name = "images/results/" + name
+    name = "iris_recognition/images/results/" + name
     np.savetxt(name,res, delimiter = ',')
 
 
@@ -175,7 +175,7 @@ def inputImage(image):
 
     irisCode = getIrisCode(normimg)
 
-    path = "images/results/"
+    path = "iris_recognition/images/results/"
     i = 0
     difference = 0
     owner = ""
@@ -221,15 +221,15 @@ def diff(irisInput,irisDB):
 def start():
     global numbersOfStarts
     numbersOfStarts +=1
-    eyesList = os.listdir('images/eyes')
+    eyesList = os.listdir('iris_recognition/images/eyes')
     key = 0
     exitString = "exit"
     numberOfFiles = 0
     while True:
         if(numbersOfStarts <= 1):
-          for i in os.listdir('images/eyes'):
+          for i in os.listdir('iris_recognition/images/eyes'):
               eye = getNewEye(eyesList)
-              frame = cv.imread("images/eyes/" + eye)
+              frame = cv.imread("iris_recognition/images/eyes/" + eye)
               makeBD(frame,eye)
         path = values['Browse']
         image = cv.imread(path)
@@ -259,3 +259,4 @@ while True:
    if(event == 'Exit'):
        break
    window['-Output-'].update()
+window.close()
